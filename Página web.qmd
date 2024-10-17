@@ -3,6 +3,7 @@ title: "Mi primera página web"
 author: "Alexandra Jiménez"
 format: html
 editor: visual
+output-file: index
 ---
 
 ## Quarto
