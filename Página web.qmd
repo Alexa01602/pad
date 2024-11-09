@@ -1,6 +1,10 @@
 ---
 title: "Mi primera página web"
 author: "Alexandra Jiménez"
+toc: true
+toc-location: left
+embed-resources: true
+number-sections: true
 format: html
 editor: visual
 output-file: index
@@ -26,29 +30,37 @@ You can add options to executable code like this
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
-#Importar datos
+
+# Importar datos
+
 ```{r}
 library (readxl)
 data<-read_excel("LA MOLINA 2014 POTATO WUE (FB).xlsx", sheet = "fb")
 head (data)
 ```
-##Modelo lineal
+
+## Modelo lineal
+
 ```{r}
 modelo<- lm(formula = lfa ~ block + geno + riego + riego*geno, data = data)
 anova(modelo)
 ```
-##Instalación del ggplot
+## Instalación del ggplot
+
 ```{r}
 library(ggplot2)
 ```
-##Gráfica con blox plot
+
+## Gráfica con blox plot
+
 ```{r}
 ggplot(data, aes(x = factor(geno),y =lfa, fill= factor(riego))) + 
   geom_boxplot() +
   labs(title = "Grafica de lfa por Genotipo", x = " Genotipo", y = "lfa") + theme_minimal()
 ```
 
-##Comparación de medias 
+## Comparación de medias 
+
 ```{r}
 library(agricolae)
 # Test de Tukey para el factor "riego"
@@ -64,7 +76,8 @@ print(tukey_interaccion)
 str(tukey_interaccion)
 ```
 
-##Instalación de paquetes
+## Instalación de paquetes
+
 ```{r}
 library(tidyverse)
 library(dplyr)
@@ -83,7 +96,8 @@ mc <- tukey_interaccion$groups %>%
 str(mc)
 ```
 
-##Gráfica ggplot2
+## Gráfica ggplot2
+
 ```{r}
 ggplot(mc, aes(x = geno, y = lfa, fill = riego)) + 
   geom_bar(stat = "identity", position = position_dodge()) + 
@@ -98,7 +112,8 @@ ggplot(mc, aes(x = geno, y = lfa, fill = riego)) +
 library(emmeans)
 ```
 
-##Comparación de medias: emmeans
+## Comparación de medias: emmeans
+
 ```{r}
 mc <- emmeans(modelo, ~ riego * geno )
 mc
@@ -112,7 +127,8 @@ mc <- emmeans(modelo, ~ riego | geno)%>%
 mc
 ```
 
-##Gráfica ggplot2
+## Gráfica ggplot2
+
 ```{r}
 ggplot(mc, aes(x = geno, y = emmean, fill = riego)) + 
   geom_bar(stat = "identity", position = position_dodge()) + 
@@ -120,5 +136,106 @@ ggplot(mc, aes(x = geno, y = emmean, fill = riego)) +
   labs(x = "variedad", y = "LFA", fill = "Riego") + 
   theme_minimal() + 
   theme(axis.text.x = element_text(angle =45,hjust=1))
+```
+## Comparacion de medias: emmeans
+
+```{r}
+library(agricolae)  
+library(tidyverse)
+
+
+tukey_result <- HSD.test(modelo, c("geno", "riego"), group = TRUE)
+print(tukey_result)
+
+
+
+str (tukey_result) 
+
+mc <- tukey_result$groups %>% 
+  rownames_to_column("trat") %>% 
+  separate(trat, c("riego", "variedad"))
+
+
+str(mc)
+```
+
+
+# Análisis multivariado (Mas de 2 variables): Por correlación y PCA
+## Análisis de correlación
+```{r}
+variables_cuantitativas <- data[, c("lfa", "hi", "leafdw", "wue")]
+
+matriz_correlacion <- cor(variables_cuantitativas, method = "pearson")
+
+print(matriz_correlacion)
+
+library(corrplot)
+
+corrplot(matriz_correlacion, method = "circle", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         title = "Matriz de Correlación", mar = c(0,0,1,0))
+
+```
+
+```{r}
+library(tidyverse)
+library(psych)
+
+data %>%
+  select_if(is.numeric) %>%
+  dplyr::select(!c("block")) %>%
+  pairs.panels(x = .
+      , hist.col="blue"
+      , pch = 21
+      , stars = TRUE 
+      , scale = FALSE 
+      , lm= TRUE)
+
+```
+
+## PCA análisis de componentes principales
+
+```{r}
+variables_cuantitativas <- data[sapply(data, is.numeric)]
+
+variables_cuantitativas_estandarizadas <- scale(variables_cuantitativas)
+
+pca_result <- prcomp(variables_cuantitativas_estandarizadas, center = TRUE, scale. = TRUE)
+summary(pca_result)
+screeplot(pca_result, type = "lines", main = "Scree Plot")
+
+library(ggplot2)
+
+biplot(pca_result, main = "Biplot del PCA", cex = 0.7)
+
+library(ggfortify)
+
+autoplot(pca_result, data = data, colour = 'black', loadings = TRUE, loadings.label = TRUE, 
+         loadings.label.size = 3, main = "Gráfico de Componentes Principales")
+
+```
+### PCA DOS EN UNO
+
+```{r}
+library(FactoMineR)
+library(cowplot)
+
+mv <- data %>%
+  group_by(riego, geno) %>%
+  summarise(across(where(is.numeric), ~ mean(., na.rm = TRUE))) %>%
+  PCA(scale.unit = T, quali.sup = c(1:4), graph = F)
+
+p1 <- plot(mv,
+           choix="ind",
+           habillage=1,
+           label = "ind")
+
+p2 <- plot(mv,
+           choix="var")
+
+list(p1, p2) %>%
+  plot_grid(plotlist = .,nrow=1)
+
+
 ```
 
